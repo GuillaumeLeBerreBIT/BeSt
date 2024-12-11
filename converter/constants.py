@@ -2,8 +2,10 @@ from pyproj import Transformer
 
 # Namespaces of the xml files
 NS = {
+    # 'com': 'http://vocab.belgif.be/ns/inspire/',
+    'com': 'http://fsb.belgium.be/data/common',
     'tns': 'http://fsb.belgium.be/mappingservices/FullDownload/v1_00',
-    'com': 'http://vocab.belgif.be/ns/inspire/',
+    'xs': 'http://www.w3.org/2001/XMLSchema',
     'int': 'http://fsb.belgium.be/data/common',
     'xsi': 'http://www.w3.org/2001/XMLSchema-instance',
     'ns2': 'http://fsb.belgium.be/data/common/error/v1_00',
@@ -23,17 +25,17 @@ NS = {
 FILE_KEYS = [
     'BrusselsAddress',
     'BrusselsMunicipality',
-    'BrusselsPostalinfo',
-    'BrusselsStreetname',
+    'BrusselsPostalInfo',
+    'BrusselsStreetName',
     'FlandersAddress',
     'FlandersMunicipality',
-    'FlandersPostalinfo',
-    'FlandersStreetname',
+    'FlandersPostalInfo',
+    'FlandersStreetName',
     'WalloniaAddress',
     'WalloniaMunicipality',
     'WalloniaPartOfMunicipality',
-    'WalloniaPostalinfo',
-    'WalloniaStreetname'
+    'WalloniaPostalInfo',
+    'WalloniaStreetName'
 ]
 
 CSV_HEADER = [

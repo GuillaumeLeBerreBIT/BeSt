@@ -5,7 +5,7 @@ class CSVWriter:
     """Stream writer for csv files"""
 
     def __init__(self, path):
-        self.output = open(path, 'w')
+        self.output = open(path, 'w', encoding='utf-8')
         self.output.write(','.join(CSV_HEADER) + '\n')
 
     def write_address(self, address):

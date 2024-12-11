@@ -32,10 +32,12 @@ def get_best_logger(log_file, verbose):
 
 
 def converter(args):
-    """Main entry point of the application
+    """
+    Main entry point of the application
     """
     # create a dictionary of all paths to the files
     paths = find_xml_files(args.input_dir)
+    # print(paths)
     # create writer
     try:
         writer = CSVWriter(args.output_file)
@@ -51,25 +53,30 @@ def converter(args):
 
 
 def find_xml_files(input_dir):
-    """Find all the xml files in the given directory
+    """
+    Find all the xml files in the given directory
     """
     keys = FILE_KEYS
     paths = {}
+    # print(input_dir)
     for root, _, files in os.walk(input_dir):
         for file in files:
             if file.split('.')[-1] == 'xml':
                 m = re.search('^([a-zA-Z]+)[0-9]?', file)
                 if m:
                     key = m.group(1)
+                    # print(key)
                     if key in keys:
                         keys.remove(key)
                         paths[key] = os.path.join(root, file)
                     else:
                         logger.warning(
                             'The contents of file %s can not be read by this script', file)
+                        
                 else:
                     logger.warning(
                         'The contents of file %s can not be read by this script', file)
+                    
 
     if keys:
         logger.error(
@@ -79,15 +86,16 @@ def find_xml_files(input_dir):
 
 
 def read_xml_files(region, paths, writer):
-    """Read all XML files for the specified region
+    """
+    Read all XML files for the specified region
     """
     logger.info('Started reading XML files')
 
     if region in ['belgium', 'brussels']:
         read_region(
             ET.parse(paths['BrusselsMunicipality']).getroot(),
-            ET.parse(paths['BrusselsPostalinfo']).getroot(),
-            ET.parse(paths['BrusselsStreetname']).getroot(),
+            ET.parse(paths['BrusselsPostalInfo']).getroot(),
+            ET.parse(paths['BrusselsStreetName']).getroot(),
             ET.iterparse(paths['BrusselsAddress']),
             'BE-BRU',
             writer
@@ -97,8 +105,8 @@ def read_xml_files(region, paths, writer):
     if region in ['belgium', 'flanders']:
         read_region(
             ET.parse(paths['FlandersMunicipality']).getroot(),
-            ET.parse(paths['FlandersPostalinfo']).getroot(),
-            ET.parse(paths['FlandersStreetname']).getroot(),
+            ET.parse(paths['FlandersPostalInfo']).getroot(),
+            ET.parse(paths['FlandersStreetName']).getroot(),
             ET.iterparse(paths['FlandersAddress']),
             'BE-VLG',
             writer
@@ -108,8 +116,8 @@ def read_xml_files(region, paths, writer):
     if region in ['belgium', 'wallonia']:
         read_region(
             ET.parse(paths['WalloniaMunicipality']).getroot(),
-            ET.parse(paths['WalloniaPostalinfo']).getroot(),
-            ET.parse(paths['WalloniaStreetname']).getroot(),
+            ET.parse(paths['WalloniaPostalInfo']).getroot(),
+            ET.parse(paths['WalloniaStreetName']).getroot(),
             ET.iterparse(paths['WalloniaAddress']),
             'BE-WAL',
             writer
@@ -118,7 +126,8 @@ def read_xml_files(region, paths, writer):
 
 
 def write_to_csv(addresses, region, output_dir):
-    """Write addresses to csv in the output directory
+    """
+    Write addresses to csv in the output directory
     """
     # convert to pandas dataframe for easy csv writing
     addresses_df = pd.DataFrame(addresses)
@@ -131,7 +140,7 @@ def read_region(muncipality_root, postalcode_root, streetname_root, address_iter
     municipalities = read_municipalities(muncipality_root)
     postalcodes = read_postalinfos(postalcode_root)
     streetnames = read_streetnames(streetname_root)
-
+    # print(municipalities, postalcodes, streetnames)
     read_addresses(address_iter, municipalities,
                    postalcodes, streetnames, region_code, writer)
 
@@ -139,7 +148,7 @@ def read_region(muncipality_root, postalcode_root, streetname_root, address_iter
 def read_addresses(addresses, municipalities, postcodes, streetnames, region_code, writer):
     count = 0
     for _, element in addresses:
-        if 'Address' == element.tag.split('}')[-1]:
+        if 'ADDRESS' == element.tag.split('}')[-1].upper():
             if count % 50_000 == 0:
                 logger.info('Read %s addresses of %s region',
                             count, region_code)
@@ -176,39 +185,42 @@ def read_address(element):
     address = {}
     for child in element:
         tag = child.tag.split('}')[-1]
-        if 'addressCode' == tag:
+        # print(tag)
+        # print(child.tag.split())
+        if 'code' in tag.lower():
             address['address_id'] = child.findtext(
                 'com:objectIdentifier', namespaces=NS)
-        elif 'addressPosition' == tag:
+        elif 'position' == tag:
             lambert_72 = tuple(map(float, child.findtext(
-                'com:pointGeometry/gml:Point/gml:pos', namespaces=NS).split(' ')))
+                'com:pointGeometry/com:point/com:pos', namespaces=NS).split(' ')))
             wgs_84 = TRANSFORMER.transform(*lambert_72)
 
             address['EPSG:31370_x'], address['EPSG:31370_y'] = lambert_72
             address['EPSG:4326_lat'], address['EPSG:4326_lon'] = wgs_84
-        elif 'houseNumber' == tag:
+        elif 'HOUSENUMBER' == tag.upper():
             address['house_number'] = child.text
-        elif 'boxNumber' == tag:
+        elif 'BOXNUMBER' == tag.upper():
             address['box_number'] = child.text
-        elif 'addressStatus' == tag:
+        elif 'ADDRESSSTATUS' == tag.upper():
             address['status'] = child.findtext(
                 'com:status', namespaces=NS)
-        elif 'hasStreetname' == tag:
+        elif 'HASSTREETNAME' == tag.upper():
             address['street_id'] = child.findtext(
-                'com:Streetname/com:objectIdentifier', namespaces=NS)
-        elif 'hasMunicipality' == tag:
+                'com:objectIdentifier', namespaces=NS)
+        elif 'HASMUNICIPALITY' == tag.upper():
             address['municipality_id'] = child.findtext(
-                'com:Municipality/com:objectIdentifier', namespaces=NS)
-        elif 'hasPostalInfo' == tag:
+                'com:objectIdentifier', namespaces=NS)
+        elif 'HASPOSTALINFO' == tag.upper():
             address['postcode'] = child.findtext(
-                'com:PostalInfo/com:objectIdentifier', namespaces=NS)
+                'com:objectIdentifier', namespaces=NS)
+        # print(address)
     return address
 
 
 def read_streetnames(element):
     streetnames = {}
     for child in element:
-        if 'Streetname' == child.tag.split('}')[-1]:
+        if 'STREETNAME' in child.tag.split('}')[-1].upper():
             streetname = read_streetname(child)
             streetnames[streetname['street_id']] = streetname
     return streetnames
@@ -218,10 +230,11 @@ def read_streetname(element):
     streetname = {}
     for child in element:
         tag = child.tag.split('}')[-1]
-        if 'streetnameCode' == tag:
+        # print(tag)
+        if 'code' in tag.lower():
             streetname['street_id'] = child.findtext(
                 'com:objectIdentifier', namespaces=NS)
-        elif 'streetname' == tag:
+        elif 'name' in tag.lower():
             lang = child.findtext(
                 'com:language', namespaces=NS)
             streetname['streetname_{}'.format(
@@ -229,23 +242,27 @@ def read_streetname(element):
     return streetname
 
 
-def read_postalinfos(element):
+def read_postalinfos(element):  # DONE
     postalinfos = {}
+    # print(element)
+    # print(ET.tostring(element, encoding='unicode'))
+
     for child in element:
-        if 'PostalInfo' == child.tag.split('}')[-1]:
+        # print(child.tag)
+        if 'POSTALINFO' in child.tag.split('}')[-1].upper():
             postalinfo = read_postalinfo(child)
             postalinfos[postalinfo['postcode']] = postalinfo
     return postalinfos
 
 
-def read_postalinfo(element):
+def read_postalinfo(element):   # DONE
     postalinfo = {}
     for child in element:
         tag = child.tag.split('}')[-1]
-        if 'postcode' == tag:
+        if 'code' in tag.lower():                                   # Previous name isn' correct == outdated. 
             postalinfo['postcode'] = child.findtext(
                 'com:objectIdentifier', namespaces=NS)
-        elif 'postname' == tag:
+        elif 'name' in tag.lower():                                 # Previous name isn' correct == outdated. 
             lang = child.findtext(
                 'com:language', namespaces=NS)
             postalinfo['postname_{}'.format(
@@ -256,7 +273,7 @@ def read_postalinfo(element):
 def read_municipalities(element):
     municipalities = {}
     for child in element:
-        if 'Municipality' == child.tag.split('}')[-1]:
+        if 'MUNICIPALITY' in child.tag.split('}')[-1].upper():
             municipality = read_muncipality(child)
             municipalities[municipality['municipality_id']] = municipality
     return municipalities
@@ -266,10 +283,10 @@ def read_muncipality(element):
     muncipality = {}
     for child in element:
         tag = child.tag.split('}')[-1]
-        if 'municipalityCode' == tag:
+        if 'code' in tag.lower():
             muncipality['municipality_id'] = child.findtext(
                 'com:objectIdentifier', namespaces=NS)
-        elif 'municipalityName' == tag:
+        elif 'name' in tag.lower():
             lang = child.findtext(
                 'com:language', namespaces=NS)
             muncipality['municipality_name_{}'.format(
