@@ -7,7 +7,7 @@ import re
 import pyproj
 import logging
 
-from constants import (TRANSFORMER, NS, FILE_KEYS)
+from constants import (TRANSFORMER, NS, FILE_KEYS_TEST)
 from writer import CSVWriter
 
 
@@ -56,7 +56,7 @@ def find_xml_files(input_dir):
     """
     Find all the xml files in the given directory
     """
-    keys = FILE_KEYS
+    keys = FILE_KEYS_TEST
     paths = {}
     # print(input_dir)
     for root, _, files in os.walk(input_dir):
@@ -65,9 +65,9 @@ def find_xml_files(input_dir):
                 m = re.search('^([a-zA-Z]+)[0-9]?', file)
                 if m:
                     key = m.group(1)
-                    # print(key)
-                    if key in keys:
-                        keys.remove(key)
+                    # Constants as variables to mach even when letters are capitalized differently
+                    if key.upper() in keys:
+                        keys.remove(key.upper())
                         paths[key] = os.path.join(root, file)
                     else:
                         logger.warning(
@@ -77,7 +77,6 @@ def find_xml_files(input_dir):
                     logger.warning(
                         'The contents of file %s can not be read by this script', file)
                     
-
     if keys:
         logger.error(
             'File for data of type %s was not found in the input folder', keys)
@@ -140,7 +139,7 @@ def read_region(muncipality_root, postalcode_root, streetname_root, address_iter
     municipalities = read_municipalities(muncipality_root)
     postalcodes = read_postalinfos(postalcode_root)
     streetnames = read_streetnames(streetname_root)
-    # print(municipalities, postalcodes, streetnames)
+    
     read_addresses(address_iter, municipalities,
                    postalcodes, streetnames, region_code, writer)
 
@@ -185,8 +184,7 @@ def read_address(element):
     address = {}
     for child in element:
         tag = child.tag.split('}')[-1]
-        # print(tag)
-        # print(child.tag.split())
+        
         if 'code' in tag.lower():
             address['address_id'] = child.findtext(
                 'com:objectIdentifier', namespaces=NS)
@@ -213,7 +211,7 @@ def read_address(element):
         elif 'HASPOSTALINFO' == tag.upper():
             address['postcode'] = child.findtext(
                 'com:objectIdentifier', namespaces=NS)
-        # print(address)
+        
     return address
 
 
@@ -230,7 +228,7 @@ def read_streetname(element):
     streetname = {}
     for child in element:
         tag = child.tag.split('}')[-1]
-        # print(tag)
+        
         if 'code' in tag.lower():
             streetname['street_id'] = child.findtext(
                 'com:objectIdentifier', namespaces=NS)
@@ -242,20 +240,17 @@ def read_streetname(element):
     return streetname
 
 
-def read_postalinfos(element):  # DONE
+def read_postalinfos(element):
     postalinfos = {}
-    # print(element)
-    # print(ET.tostring(element, encoding='unicode'))
 
     for child in element:
-        # print(child.tag)
         if 'POSTALINFO' in child.tag.split('}')[-1].upper():
             postalinfo = read_postalinfo(child)
             postalinfos[postalinfo['postcode']] = postalinfo
     return postalinfos
 
 
-def read_postalinfo(element):   # DONE
+def read_postalinfo(element):
     postalinfo = {}
     for child in element:
         tag = child.tag.split('}')[-1]
